@@ -35,8 +35,8 @@
     }
     #imageDisplay {
       margin: 20px 0;
-      max-width: 300px;
-      max-height: 300px;
+      max-width: 250px;
+      max-height: 250px;
       display: none;
     }
     button {
@@ -50,14 +50,15 @@
 <body>
   <h1>Draw a Letter for Toddlers</h1>
   <p>Draw one big letter (A-Z) on the canvas below and click "Recognize" to see its picture!</p>
-  <canvas id="canvas" width="400" height="400"></canvas>
+  <canvas id="canvas" width="250" height="250"></canvas>
+  <img id="imageDisplay" src="" alt="Recognized Letter Image">
   <div>
     <button onclick="clearCanvas()">Clear Canvas</button>
     <button onclick="recognizeText()">Recognize</button>
   </div>
   <div id="progress"></div>
   <div id="output"></div>
-  <img id="imageDisplay" src="" alt="Recognized Letter Image">
+  
 
   <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
   <script>
