@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draw Alphabet for Toddlers with Tesseract.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    canvas {
+      border: 2px solid #333;
+      background: #fff;
+      margin: 10px 0;
+      display: block;
+      touch-action: none;
+    }
+    #output {
+      margin: 20px 0;
+      white-space: pre-wrap;
+      text-align: left;
+      max-width: 500px;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    #progress {
+      margin: 10px 0;
+    }
+    #imageDisplay {
+      margin: 20px 0;
+      max-width: 300px;
+      max-height: 300px;
+      display: none;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Draw a Letter for Toddlers</h1>
+  <p>Draw one big letter (A-Z) on the canvas below and click "Recognize" to see its picture!</p>
+  <canvas id="canvas" width="400" height="400"></canvas>
+  <div>
+    <button onclick="clearCanvas()">Clear Canvas</button>
+    <button onclick="recognizeText()">Recognize</button>
+  </div>
+  <div id="progress"></div>
+  <div id="output"></div>
+  <img id="imageDisplay" src="" alt="Recognized Letter Image">
+
+  <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const output = document.getElementById('output');
+    const progress = document.getElementById('progress');
+    const imageDisplay = document.getElementById('imageDisplay');
+
+    // Initialize canvas context properties
+    function initCanvasContext() {
+      ctx.lineWidth = 20; // Thicker lines for toddler drawings
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+      // Draw faint grid as a guide
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 100; i < 400; i += 100) {
+        ctx.moveTo(i, 0); ctx.lineTo(i, 400); // Vertical lines
+        ctx.moveTo(0, i); ctx.lineTo(400, i); // Horizontal lines
+      }
+      ctx.stroke();
+      ctx.closePath();
+      // Restore drawing settings
+      ctx.lineWidth = 20;
+      ctx.strokeStyle = '#000';
+    }
+
+    // Drawing setup
+    let drawing = false;
+    initCanvasContext();
+
+    // Mouse events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Touch events
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startDrawing(e.touches[0]);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      draw(e.touches[0]);
+    });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    function startDrawing(e) {
+      drawing = true;
+      ctx.beginPath();
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      ctx.moveTo(x, y);
+      console.log('Drawing started at:', x, y);
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      console.log('Drawing at:', x, y);
+    }
+
+    function stopDrawing() {
+      if (drawing) {
+        drawing = false;
+        ctx.closePath();
+        console.log('Drawing stopped');
+      }
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      initCanvasContext(); // Reinitialize context and grid
+      output.textContent = '';
+      progress.textContent = '';
+      imageDisplay.style.display = 'none';
+      imageDisplay.src = '';
+      canvas.focus();
+      console.log('Canvas cleared');
+    }
+
+    // Preprocess canvas image for better recognition
+    function preprocessImage(canvas) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // Draw original canvas content
+      tempCtx.drawImage(canvas, 0, 0);
+
+      // Get image data
+      const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Binarize: Convert to black and white (threshold)
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = (r + g + b) / 3;
+        const threshold = 200; // Adjust for sensitivity
+        if (brightness < threshold) {
+          data[i] = data[i + 1] = data[i + 2] = 0; // Black
+        } else {
+          data[i] = data[i + 1] = data[i + 2] = 255; // White
+        }
+      }
+
+      // Put back processed image
+      tempCtx.putImageData(imageData, 0, 0);
+
+      // Optional: Smooth lines (basic dilation effect)
+      tempCtx.globalCompositeOperation = 'destination-over';
+      tempCtx.drawImage(tempCanvas, -2, 0);
+      tempCtx.drawImage(tempCanvas, 2, 0);
+      tempCtx.drawImage(tempCanvas, 0, -2);
+      tempCtx.drawImage(tempCanvas, 0, 2);
+
+      return tempCanvas.toDataURL('image/png');
+    }
+
+    function recognizeText() {
+      output.textContent = 'Processing your letter...';
+      progress.textContent = '';
+      imageDisplay.style.display = 'none';
+
+      // Preprocess canvas
+      const processedImage = preprocessImage(canvas);
+
+      // Perform OCR with Tesseract.js
+      Tesseract.recognize(
+        processedImage,
+        'eng',
+        {
+          logger: (m) => {
+            progress.textContent = `Progress: ${(m.progress * 100).toFixed(2)}%`;
+          },
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', // Uppercase only
+          tessedit_pageseg_mode: '10' // Single character mode
+        }
+      ).then(({ data: { text } }) => {
+        const recognizedText = text.trim().toUpperCase();
+        if (recognizedText && /^[A-Z]$/.test(recognizedText)) {
+          output.textContent = `Great job! You drew: ${recognizedText}`;
+          imageDisplay.src = `images/${recognizedText}.jpg`;
+          imageDisplay.style.display = 'block';
+          imageDisplay.onerror = () => {
+            output.textContent += '\nOops! Picture not found. Check images/A.jpg, etc.';
+            imageDisplay.style.display = 'none';
+          };
+        } else {
+          output.textContent = 'Hmm, try drawing a clearer letter (A-Z)!';
+        }
+        progress.textContent = 'Done!';
+        canvas.focus();
+      }).catch((error) => {
+        output.textContent = 'Oops, something went wrong: ' + error.message;
+        progress.textContent = '';
+        imageDisplay.style.display = 'none';
+        canvas.focus();
+      });
+    }
+  </script>
+</body>
+</html>
