@@ -35,8 +35,8 @@
     }
     #imageDisplay {
       margin: 20px 0;
-      max-width: 250px;
-      max-height: 250px;
+      max-width: 200px;
+      max-height: 200px;
       display: none;
     }
     button {
@@ -50,7 +50,7 @@
 <body>
   <h1>Draw a Letter for Toddlers</h1>
   <p>Draw one big letter (A-Z) on the canvas below and click "Recognize" to see its picture!</p>
-  <canvas id="canvas" width="250" height="250"></canvas>
+  <canvas id="canvas" width="300" height="300"></canvas>
   <img id="imageDisplay" src="" alt="Recognized Letter Image">
   <div>
     <button onclick="clearCanvas()">Clear Canvas</button>
@@ -189,6 +189,34 @@
       return tempCanvas.toDataURL('image/png');
     }
 
+     function speakLetter(lastRecognizedLetter) {
+      if (!lastRecognizedLetter) {
+        output.textContent = 'Please draw and recognize a letter first!';
+        return;
+      }
+
+      if (!window.speechSynthesis) {
+        output.textContent = 'Sorry, text-to-speech is not supported in this browser!';
+        return;
+      }
+
+      lastRecognizedLetter = getLetterWord (lastRecognizedLetter);
+
+      const utterance = new SpeechSynthesisUtterance(lastRecognizedLetter);
+      utterance.lang = 'en-US';
+      utterance.pitch = 1.2; // Slightly higher pitch for child-friendly tone
+      utterance.rate = 0.8; // Slower rate for clarity
+      utterance.volume = 1.0;
+
+      // Select a clear voice (if available)
+      const voices = window.speechSynthesis.getVoices();
+      const enVoice = voices.find(voice => voice.lang.includes('en-US')) || voices[0];
+      if (enVoice) utterance.voice = enVoice;
+
+      window.speechSynthesis.speak(utterance);
+      output.textContent = `Great job! The letter is ${lastRecognizedLetter}!`;
+    }
+
     function recognizeText() {
       output.textContent = 'Processing your letter...';
       progress.textContent = '';
@@ -214,6 +242,7 @@
           output.textContent = `Great job! You drew: ${recognizedText}`;
           imageDisplay.src = `images/${recognizedText}.jpg`;
           imageDisplay.style.display = 'block';
+          speakLetter(recognizedText);
           imageDisplay.onerror = () => {
             output.textContent += '\nOops! Picture not found. Check images/A.jpg, etc.';
             imageDisplay.style.display = 'none';
@@ -230,6 +259,48 @@
         canvas.focus();
       });
     }
+
+    function getLetterWord(letter) {
+    // Convert letter to uppercase to handle lowercase input
+    letter = letter.toUpperCase();
+    
+    // Object mapping letters to words
+    const letterWords = {
+        'A': 'Apple',
+        'B': 'Ball',
+        'C': 'Cat',
+        'D': 'Dog',
+        'E': 'Elephant',
+        'F': 'Fish',
+        'G': 'Giraffe',
+        'H': 'House',
+        'I': 'Igloo',
+        'J': 'Jug',
+        'K': 'Kite',
+        'L': 'Lion',
+        'M': 'Mango',
+        'N': 'Nest',
+        'O': 'Orange',
+        'P': 'Parrot',
+        'Q': 'Queen',
+        'R': 'Rat',
+        'S': 'Sun',
+        'T': 'Truck',
+        'U': 'Umbrella',
+        'V': 'Van',
+        'W': 'Wheel',
+        'X': 'A-Mas tree',
+        'Y': 'Yak',
+        'Z': 'Zebra'
+    };
+    
+    // Check if the input is a valid letter (A-Z)
+    if (/^[A-Z]$/.test(letter)) {
+        return `${letter} for ${letterWords[letter]}`;
+    } else {
+        return "Please provide a single letter from A to Z";
+    }
+}
   </script>
 </body>
 </html>
